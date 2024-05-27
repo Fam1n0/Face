@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Face Combination</title>
+    <style>
+        #faceCanvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload Two Sides of a Face</h1>
+    <input type="file" id="leftFace" accept="image/*">
+    <input type="file" id="rightFace" accept="image/*">
+    <button onclick="combineFaces()">Combine Faces</button>
+    <canvas id="faceCanvas" width="500" height="500"></canvas>
+
+    <script src="faceCombine.js"></script>
+</body>
+</html>
