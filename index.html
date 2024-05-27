@@ -14,6 +14,7 @@
         #faceCanvas {
             border: 1px solid black;
             margin-top: 20px;
+            position: relative;
         }
         input {
             margin: 10px 0;
@@ -28,59 +29,80 @@
 <body>
     <h1>Upload Two Sides of a Face</h1>
     <input type="file" id="leftFace" accept="image/*">
+    <button onclick="loadImage('left')">Upload Left Face</button>
     <input type="file" id="rightFace" accept="image/*">
+    <button onclick="loadImage('right')">Upload Right Face</button>
     <button onclick="combineFaces()">Combine Faces</button>
     <canvas id="faceCanvas" width="500" height="500"></canvas>
 
     <script>
-        function combineFaces() {
-            const leftFaceInput = document.getElementById('leftFace').files[0];
-            const rightFaceInput = document.getElementById('rightFace').files[0];
+        let leftFaceImage, rightFaceImage;
 
-            if (!leftFaceInput || !rightFaceInput) {
+        function loadImage(side) {
+            const input = document.getElementById(side + 'Face').files[0];
+            if (!input) {
+                alert(`Please select an image for the ${side} side.`);
+                return;
+            }
+            const img = new Image();
+            img.onload = function() {
+                if (side === 'left') {
+                    leftFaceImage = img;
+                } else {
+                    rightFaceImage = img;
+                }
+            };
+            img.src = URL.createObjectURL(input);
+        }
+
+        function combineFaces() {
+            if (!leftFaceImage || !rightFaceImage) {
                 alert("Please upload both images.");
                 return;
             }
 
             const canvas = document.getElementById('faceCanvas');
             const ctx = canvas.getContext('2d');
-            const leftImage = new Image();
-            const rightImage = new Image();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            leftImage.onload = function() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const faceShape = new Path2D(`
+                M250,100
+                C150,50 50,150 50,300
+                C50,450 150,550 250,500
+                C350,550 450,450 450,300
+                C450,150 350,50 250,100
+            `);
 
-                const aspectRatioLeft = leftImage.width / leftImage.height;
-                const aspectRatioRight = rightImage.width / rightImage.height;
+            // Stretch and warp left face
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(0, 100);
+            ctx.bezierCurveTo(150, 50, 100, 400, 0, 500);
+            ctx.clip();
+            ctx.drawImage(leftFaceImage, 0, 0, 250, 500);
+            ctx.restore();
 
-                const scaledHeight = canvas.height;
-                const scaledWidthLeft = scaledHeight * aspectRatioLeft;
-                const scaledWidthRight = scaledHeight * aspectRatioRight;
+            // Stretch and warp right face
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(500, 100);
+            ctx.bezierCurveTo(350, 50, 400, 400, 500, 500);
+            ctx.clip();
+            ctx.drawImage(rightFaceImage, 250, 0, 250, 500);
+            ctx.restore();
 
-                const leftX = (canvas.width / 2) - scaledWidthLeft;
-                const rightX = canvas.width / 2;
-
-                ctx.drawImage(leftImage, leftX, 0, scaledWidthLeft, scaledHeight);
-                
-                rightImage.onload = function() {
-                    ctx.drawImage(rightImage, rightX, 0, scaledWidthRight, scaledHeight);
-
-                    // Blending the seam
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-                    for (let x = canvas.width / 2 - 10; x < canvas.width / 2 + 10; x++) {
-                        for (let y = 0; y < canvas.height; y++) {
-                            const idx = (y * canvas.width + x) * 4;
-                            data[idx] = (data[idx - 4] + data[idx + 4]) / 2;
-                            data[idx + 1] = (data[idx - 3] + data[idx + 5]) / 2;
-                            data[idx + 2] = (data[idx - 2] + data[idx + 6]) / 2;
-                        }
-                    }
-                    ctx.putImageData(imageData, 0, 0);
-                };
-                rightImage.src = URL.createObjectURL(rightFaceInput);
+            // Apply face shape mask
+            ctx.globalCompositeOperation = 'destination-in';
+            const faceMask = new Image();
+            faceMask.onload = function() {
+                ctx.drawImage(faceMask, 0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = 'source-over';
+                // Optionally add a border or outline to the face shape
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.stroke(faceShape);
             };
-            leftImage.src = URL.createObjectURL(leftFaceInput);
+            faceMask.src = 'path/to/your/face-shape.png'; // Add your face shape image path here
         }
     </script>
 </body>
